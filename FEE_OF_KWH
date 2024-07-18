@@ -1,0 +1,64 @@
+CREATE DEFINER=`root`@`%` FUNCTION `FN_GET_FEE_OF_KWH`(
+
+`_stat_datetime` DATETIME
+
+)
+
+RETURNS float
+
+LANGUAGE SQL
+
+NOT DETERMINISTIC
+
+CONTAINS SQL
+
+SQL SECURITY DEFINER
+
+COMMENT '부하에 따른 전력량요금'
+
+BEGIN
+
+ 
+
+if(_stat_datetime is null)  then
+
+return null;
+
+end if;
+
+ 
+
+ 
+
+set @_year = YEAR(_stat_datetime);
+
+set @_month = MONTH(_stat_datetime);
+
+set @_time = TIME(_stat_datetime);
+
+set @_grade = FN_GET_GRADE_OF_KWH(_stat_datetime);
+
+ 
+
+select fee into @_base_fee from tbl_std_grade_fee
+
+where std_year <= @_year
+
+and  ( (st_mon <= @_month and end_mon >= @_month) or (st_mon > end_mon and ( (end_mon >= @_month and st_mon >= @_month) or (end_mon <= @_month and st_mon <= @_month)) ) )
+
+AND grade=@_grade
+
+order by std_year DESC
+
+limit 1;
+
+ 
+
+return @_base_fee;
+
+ 
+
+#공휴일 적용 부하 체크
+
+ 
+END
