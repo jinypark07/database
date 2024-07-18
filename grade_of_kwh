@@ -1,0 +1,135 @@
+CREATE DEFINER=`root`@`%` FUNCTION `FN_GET_GRADE_OF_KWH`(
+
+`_stat_datetime` DATETIME
+
+)
+
+RETURNS char(20) CHARSET utf8
+
+LANGUAGE SQL
+
+DETERMINISTIC
+
+CONTAINS SQL
+
+SQL SECURITY DEFINER
+
+COMMENT ''
+
+BEGIN
+
+ 
+
+#return _stat_datetime;
+
+ 
+
+if(_stat_datetime is null)  then
+
+return null;
+
+end if;
+
+ 
+
+ 
+
+set @_year = YEAR(_stat_datetime);
+
+set @_month = MONTH(_stat_datetime);
+
+set @_time = TIME(_stat_datetime);
+
+ 
+
+ 
+
+select grade into @_base_grade from tbl_std_grade_base
+
+where std_year < @_year
+
+and  ( (st_mon <= @_month and end_mon >= @_month) or (st_mon > end_mon and ( (end_mon >= @_month and st_mon >= @_month) or (end_mon <= @_month and st_mon <= @_month)) ) )
+
+#and (st_time>end_time AND (end_time > @_time AND st_time>= @_time)) OR (st_time <= @_time and end_time > @_time)
+
+#and ( (st_time < end_time and  st_time <= @_time and end_time > @_time) or ( st_time > end_time and st_time >= @_time and end_time > @_time ))
+
+and ( (st_time < end_time and  st_time <= @_time and end_time > @_time) or ( st_time > end_time and ( (end_time > @_time and st_time >= @_time) or (end_time <= @_time and st_time <= @_time)) ))
+
+order by std_year desc
+
+limit 1;
+
+ 
+
+ 
+
+#return @_default_grade;
+
+ 
+
+ 
+
+#공휴일 적용 부하 체크
+
+set @holiday_chk = 0;
+
+ 
+
+#select count(*) into @holiday_chk from tbl_std_holiday where DATE_FORMAT(_stat_datetime, '%Y-%m-%d') = DATE_FORMAT( _datetime , '%Y-%m-%d');
+
+ 
+
+ 
+
+ 
+
+select holiday, sunday, saturday into @holiday, @sunday, @saturday from tbl_std_grade_rule where std_year < @_year order by std_year desc limit 1;
+
+ 
+
+set @grade = @_base_grade;
+
+set @_dayOfWeek = DAYOFWEEK(_stat_datetime);
+
+ 
+
+if(@holiday_chk > 0) then
+
+ 
+
+set @grade = @holiday;
+
+ 
+
+elseif(@_dayOfWeek = 1) then
+
+ 
+
+set @grade = @sunday;
+
+ 
+
+elseif(@_dayOfWeek = 7) then
+
+ 
+
+set @grade = @saturday;
+
+ 
+
+end if;
+
+ 
+
+ 
+
+return @_base_grade;
+
+ 
+
+#return @grade;
+
+ 
+
+END
