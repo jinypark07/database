@@ -1,0 +1,99 @@
+CREATE DEFINER=`root`@`%` FUNCTION `FN_GET_ELEC_VAT_OF_KWH`(
+
+`_power_fee_l` INT,
+
+`_power_fee_m` INT,
+
+`_power_fee_h` INT,
+
+`_stat_date` DATE,
+
+`_gubun` VARCHAR(5)
+
+ 
+
+ 
+
+)
+
+RETURNS char(20) CHARSET utf8
+
+LANGUAGE SQL
+
+DETERMINISTIC
+
+CONTAINS SQL
+
+SQL SECURITY DEFINER
+
+COMMENT '연간 사용금액의 부가세 구하기'
+
+BEGIN
+
+ 
+
+set @_power_fee_l = TRUNCATE(_power_fee_l,0);
+
+set @_power_fee_m = TRUNCATE(_power_fee_m,0);
+
+set @_power_fee_h = TRUNCATE(_power_fee_h,0);
+
+set @_stat_date = DATE(_stat_date);
+
+set @_gubun = _gubun;
+
+ 
+
+SELECT ROUND(0.1*A.power_BILL,0) + TRUNCATE(0.037*A.power_BILL,-1) AS vat_amount into @vat_amount
+
+   FROM (SELECT A.BASIC_BILL+A.LAGGING_PF_BILL+A.LEADING_PF_BILL+@_power_fee_l+@_power_fee_m+@_power_fee_h AS power_BILL
+
+                   FROM (SELECT CASE @_gubun WHEN 'MONTH' THEN (A.BASIC_FEE* A.CONTRACT_DEMAND)/DAY(LAST_DAY(@_stat_date))
+
+                                                                           WHEN 'YEAR' THEN (A.BASIC_FEE* A.CONTRACT_DEMAND)
+
+                                                END AS BASIC_BILL,
+
+                                               A.BASIC_FEE* A.CONTRACT_DEMAND AS total_BASIC_BILL,
+
+                                               A.LAGGING_PF,A.LEADING_PF,
+
+                                              CASE @_gubun WHEN 'MONTH' THEN TRUNCATE(A.BASIC_FEE* A.CONTRACT_DEMAND*A.LAGGING_PF/100/DAY(LAST_DAY(@_stat_date)) ,0)
+
+                                                                         WHEN 'YEAR' THEN TRUNCATE(A.BASIC_FEE* A.CONTRACT_DEMAND*A.LAGGING_PF/100,0)
+
+                                              END AS LAGGING_PF_BILL,
+
+                                              # A.BASIC_FEE* A.CONTRACT_DEMAND*A.LAGGING_PF AS LAGGING_PF_BILL2,
+
+                                              CASE @_gubun WHEN 'MONTH' THEN TRUNCATE(A.BASIC_FEE* A.CONTRACT_DEMAND*A.LEADING_PF/100/DAY(LAST_DAY(@_stat_date)) ,0)
+
+                                                                          WHEN 'YEAR' THEN TRUNCATE(A.BASIC_FEE* A.CONTRACT_DEMAND*A.LEADING_PF/100,0)
+
+                                               END AS LEADING_PF_BILL
+
+                                   FROM (SELECT MAX( IF(ITEM_NAME='BASIC_FEE', ITEM_VALUE, NULL)) AS BASIC_FEE,
+
+                                                               MAX(IF(ITEM_NAME='CONTRACT_DEMAND', ITEM_VALUE, NULL)) AS CONTRACT_DEMAND,
+
+                                                               TRUNCATE(FN_GET_PF_OF_KWH('LAGGING_PF'),1) AS LAGGING_PF,
+
+                                                               TRUNCATE(FN_GET_PF_OF_KWH('LEADING_PF'),1) AS LEADING_PF
+
+                                                    FROM tbl_std_price_sheet
+
+                                                 WHERE ITEM_NAME IN ('BASIC_FEE', 'CONTRACT_DEMAND', 'LAGGING_PF', 'LEADING_PF')
+
+                                                ) A
+
+                                ) A
+
+                  ) A;
+
+ 
+
+return @vat_amount;
+
+ 
+
+END
