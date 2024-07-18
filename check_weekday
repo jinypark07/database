@@ -1,0 +1,37 @@
+CREATE DEFINER=`root`@`%` FUNCTION `F_TOTAL_WEEKDAYS`(
+
+ `_date1` DATE
+
+)
+
+RETURNS int(2)
+
+LANGUAGE SQL
+
+NOT DETERMINISTIC
+
+CONTAINS SQL
+
+SQL SECURITY DEFINER
+
+COMMENT '두 날짜사이의 평일 수 계산'
+
+BEGIN
+
+​
+
+set @date1 = LAST_DAY(_date1-INTERVAL 1 MONTH)+INTERVAL 1 DAY;
+
+set @date2 = LAST_DAY(_date1);
+
+RETURN ABS(DATEDIFF(@date2, @date1)) +1
+
+        - ABS(DATEDIFF(ADDDATE(@date2, INTERVAL 1 - DAYOFWEEK(@date2) DAY),
+
+                       ADDDATE(@date1,INTERVAL 1 - DAYOFWEEK(@date1) DAY))) / 7 * 2
+
+        - (DAYOFWEEK(IF(@date1 < @date2, @date1, @date2)) = 1)
+
+        - (DAYOFWEEK(IF(@date1 > @date2, @date1, @date2)) = 7);
+
+END
