@@ -1,0 +1,61 @@
+CREATE DEFINER=`root`@`%` FUNCTION `FN_GET_PF_OF_KWH`(
+
+`_PF_TYPE` VARCHAR(50)
+
+ 
+
+ 
+
+ 
+
+)
+
+RETURNS float
+
+LANGUAGE SQL
+
+DETERMINISTIC
+
+CONTAINS SQL
+
+SQL SECURITY DEFINER
+
+COMMENT '지상/진상역률 값 반환'
+
+BEGIN
+
+if(_PF_TYPE is null) then
+
+return null;
+
+end if;
+
+ 
+
+set @_pf_type = _PF_TYPE;
+
+ 
+
+ 
+
+SELECT ITEM_VALUE into @_pf_percent FROM tbl_std_price_sheet
+
+WHERE ITEM_NAME=@_pf_type;
+
+ 
+
+SELECT EXTRA_CHARGE into @_extra_charge FROM tbl_std_pf_ref
+
+WHERE pf_type=@_pf_type
+
+AND percent<=@_pf_percent
+
+ORDER BY percent DESC
+
+LIMIT 1;
+
+ 
+
+return @_extra_charge;
+
+END
