@@ -1,0 +1,7 @@
+/* 오라클에서 사용하는 프로시저가 많을 때 프로시저들에서 참조하는 테이블로 프로시저를 검색하기 위한 쿼리문 */
+
+SELECT T1.OBJECT_ID, T1.OBJECT_NAME, T1.OBJECT_TYPE, T2.TEXT
+  FROM USER_OBJECTS T1
+INNER JOIN USER_SOURCE T2 ON T1.OBJECT_NAME = T2.NAME
+WHERE T1.OBJECT_TYPE = 'PROCEDURE' --함수도 필요하면 FUNCTION 추가
+AND T2.TEXT LIKE '%검색할 테이블 명%';
